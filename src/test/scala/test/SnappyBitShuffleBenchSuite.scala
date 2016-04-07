@@ -20,14 +20,14 @@ package test
 import org.apache.commons.math3.distribution.LogNormalDistribution
 import org.apache.spark.util.Benchmark
 import org.scalatest.FunSuite
-import org.xerial.snappy.Snappy
+import org.xerial.snappy.{BitShuffle, Snappy}
 import org.apache.parquet.column.Encoding._
 import org.apache.parquet.column.values.delta._
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter._
 
 class SnappyBitShuffleBenchSuite extends FunSuite {
 
-  private[this] val NUM_TEST_DATA = 1000000
+  private[this] val NUM_TEST_DATA = 10000000
 
   private[this] def computeRatio(compressed: Array[Byte], origSize: Int) = {
     s"${((compressed.length + 0.0) / origSize).formatted("%.3f")}"
@@ -86,8 +86,8 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
     }
 
     val compressFuncs1 = Seq[(String, Array[Int] => Array[Byte])](
-      ("vanilla snappy", (in: Array[Int]) => Snappy.compress(in, false)),
-      ("snappy + bitshuffle", (in: Array[Int]) => Snappy.compress(in, true)),
+      ("vanilla snappy", (in: Array[Int]) => Snappy.compress(in)),
+      ("snappy + bitshuffle", (in: Array[Int]) => Snappy.compress(BitShuffle.bitShuffle(in))),
       ("parquet encoder", (in: Array[Int]) => {
         val writer = new DeltaBinaryPackingValuesWriter(100, 1000)
         in.foreach { value =>
@@ -125,13 +125,13 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
     val compressFuncs2 = Seq[(String, Array[Int] => Array[Byte], Array[Byte] => Unit)](
       (
         "vanilla snappy",
-        (in: Array[Int]) => Snappy.compress(in, false),
+        (in: Array[Int]) => Snappy.compress(in),
         (in: Array[Byte]) => Snappy.uncompressIntArray(in)
       ),
       (
         "snappy + bitshuffle",
-        (in: Array[Int]) => Snappy.compress(in, true),
-        (in: Array[Byte]) => Snappy.uncompressIntArray(in)
+        (in: Array[Int]) => Snappy.compress(BitShuffle.bitShuffle(in)),
+        (in: Array[Byte]) => BitShuffle.bitUnShuffleIntArray(Snappy.uncompress(in))
       ),
       (
         "parquet encoder",
@@ -189,8 +189,8 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
     }
 
     val compressFuncs1 = Seq[(String, Array[Float] => Array[Byte])](
-      ("vanilla snappy", (in: Array[Float]) => Snappy.compress(in, false)),
-      ("snappy + bitshuffle", (in: Array[Float]) => Snappy.compress(in, true)),
+      ("vanilla snappy", (in: Array[Float]) => Snappy.compress(in)),
+      ("snappy + bitshuffle", (in: Array[Float]) => Snappy.compress(BitShuffle.bitShuffle(in))),
       ("parquet encoder", (in: Array[Float]) => {
         val writer = new PlainFloatDictionaryValuesWriter(1000, DELTA_BINARY_PACKED, PLAIN_DICTIONARY)
         in.foreach { value =>
@@ -227,13 +227,13 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
     val compressFuncs2 = Seq[(String, Array[Float] => Array[Byte], Array[Byte] => Unit)](
       (
         "vanilla snappy",
-        (in: Array[Float]) => Snappy.compress(in, false),
+        (in: Array[Float]) => Snappy.compress(in),
         (in: Array[Byte]) => Snappy.uncompressFloatArray(in)
       ),
       (
         "snappy + bitshuffle",
-        (in: Array[Float]) => Snappy.compress(in, true),
-        (in: Array[Byte]) => Snappy.uncompressFloatArray(in)
+        (in: Array[Float]) => Snappy.compress(BitShuffle.bitShuffle(in)),
+        (in: Array[Byte]) => BitShuffle.bitUnShuffleFloatArray(Snappy.uncompress(in))
       )
     )
 

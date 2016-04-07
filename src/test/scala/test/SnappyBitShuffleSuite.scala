@@ -21,12 +21,12 @@ import scala.util.Random
 
 import org.apache.commons.math3.distribution.LogNormalDistribution
 import org.scalatest.{FunSuite, PrivateMethodTester}
-import org.xerial.snappy.Snappy
+import org.xerial.snappy.BitShuffle
 
 class SnappyBitShuffleSuite extends FunSuite with PrivateMethodTester {
 
   def testCompressBitShuffleData(input: Array[Int]) {
-    val result = Snappy.uncompressIntArray(Snappy.compress(input, true))
+    val result = BitShuffle.bitUnShuffleIntArray(BitShuffle.bitShuffle(input))
     input.zipWithIndex.foreach { case (value, index) =>
       assertResult(value, s"Wrong ${index}-th decoded value") {
         result(index)
