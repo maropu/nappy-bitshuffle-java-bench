@@ -27,7 +27,8 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter._
 
 class SnappyBitShuffleBenchSuite extends FunSuite {
 
-  private[this] val NUM_TEST_DATA = 1000000
+  private[this] val NUM_TEST_DATA = 2500000
+  private[this] val NUM_TEST_COUNT = 16
 
   private[this] def runBitShuffleBenchmark[T](
       name: String,
@@ -97,7 +98,7 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
   test("bitshuffle-benchmark") {
     runBitShuffleBenchmark[Int](
       "BitShuffle",
-      16,
+      NUM_TEST_COUNT,
       NUM_TEST_DATA,
       Some(("bitshuffle", (in: Array[Int]) =>
         BitShuffle.bitUnShuffleIntArray(BitShuffle.bitShuffle(in)))),
@@ -137,7 +138,7 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
      * parquet encoder(0.072)                    297 /  375         53.9          18.6       0.7X
      */
     runCompressBenchmark[Int](
-      "Compress(Lower Skew)", 16, NUM_TEST_DATA, compressFuncs1,
+      "Compress(Lower Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs1,
       lowerSkewTestData, 4 * NUM_TEST_DATA)
 
 
@@ -150,7 +151,7 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
      * parquet encoder(0.160)                    322 /  374         49.7          20.1       0.8X
      */
     runCompressBenchmark(
-      "Compress(Higher Skew)", 16, NUM_TEST_DATA, compressFuncs1,
+      "Compress(Higher Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs1,
       higherSkewTestData, 4 * NUM_TEST_DATA)
 
     val compressFuncs2 = Seq[(String, Array[Int] => Array[Byte], Array[Byte] => Unit)](
@@ -192,7 +193,7 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
      * parquet encoder                            77 /   78        207.2           4.8       1.2X
      */
     runUncompressBenchmark[Int](
-      "Uncompress(Lower Skew)", 16, NUM_TEST_DATA, compressFuncs2,
+      "Uncompress(Lower Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs2,
       lowerSkewTestData)
 
     /**
@@ -204,11 +205,11 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
      * parquet encoder                            84 /  106        189.4           5.3       1.2X
      */
     runUncompressBenchmark[Int](
-      "Uncompress(Higher Skew)", 16, NUM_TEST_DATA, compressFuncs2,
+      "Uncompress(Higher Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs2,
       higherSkewTestData)
   }
 
-  test("snappy-benchmark (4-byte floats)") {
+  ignore("snappy-benchmark (4-byte floats)") {
     val lowerSkewTestData = {
       val rng = new LogNormalDistribution(0.0, 0.01)
       Array.fill(NUM_TEST_DATA)(rng.sample().toFloat)
@@ -240,7 +241,7 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
      * parquet encoder(0.594)                   4507 / 4651          3.6         281.7       0.0X
      */
     runCompressBenchmark[Float](
-      "Compress(Lower Skew)", 16, NUM_TEST_DATA, compressFuncs1,
+      "Compress(Lower Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs1,
       lowerSkewTestData, 4 * NUM_TEST_DATA)
 
     /**
@@ -252,7 +253,7 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
      * parquet encoder(0.625)                   8705 / 8912          1.8         544.1       0.0X
      */
     runCompressBenchmark(
-      "Compress(Higher Skew)", 16, NUM_TEST_DATA, compressFuncs1,
+      "Compress(Higher Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs1,
       higherSkewTestData, 4 * NUM_TEST_DATA)
 
     val compressFuncs2 = Seq[(String, Array[Float] => Array[Byte], Array[Byte] => Unit)](
@@ -276,7 +277,7 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
      * snappy + bitshuffle                        47 /   51        338.1           3.0       0.3X
      */
     runUncompressBenchmark[Float](
-      "Uncompress(Lower Skew)", 16, NUM_TEST_DATA, compressFuncs2,
+      "Uncompress(Lower Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs2,
       lowerSkewTestData)
 
     /**
@@ -287,7 +288,7 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
      * snappy + bitshuffle                        45 /   47        357.1           2.8       0.3X
      */
     runUncompressBenchmark[Float](
-      "Uncompress(Higher Skew)", 16, NUM_TEST_DATA, compressFuncs2,
+      "Uncompress(Higher Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs2,
       higherSkewTestData)
   }
 }
