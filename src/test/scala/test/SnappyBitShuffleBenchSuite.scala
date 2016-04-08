@@ -27,7 +27,7 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter._
 
 class SnappyBitShuffleBenchSuite extends FunSuite {
 
-  private[this] val NUM_TEST_DATA = 2500000
+  private[this] val NUM_TEST_DATA = 10000000
   private[this] val NUM_TEST_COUNT = 16
 
   private[this] def runBitShuffleBenchmark[T](
@@ -120,6 +120,7 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
     val compressFuncs1 = Seq[(String, Array[Int] => Array[Byte])](
       ("vanilla snappy", (in: Array[Int]) => Snappy.compress(in)),
       ("snappy + bitshuffle", (in: Array[Int]) => Snappy.compress(BitShuffle.bitShuffle(in))),
+      ("snappy + bitshuffle + merged", (in: Array[Int]) => Snappy.compressWithBitShuffle(in)),
       ("parquet encoder", (in: Array[Int]) => {
         val writer = new DeltaBinaryPackingValuesWriter(100, 1000)
         in.foreach { value =>
@@ -140,7 +141,6 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
     runCompressBenchmark[Int](
       "Compress(Lower Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs1,
       lowerSkewTestData, 4 * NUM_TEST_DATA)
-
 
     /**
      * Intel(R) Core(TM) i7-4578U CPU @ 3.00GHz
