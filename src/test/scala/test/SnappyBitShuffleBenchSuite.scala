@@ -27,7 +27,27 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter._
 
 class SnappyBitShuffleBenchSuite extends FunSuite {
 
-  private[this] val NUM_TEST_DATA = 10000000
+  private[this] val NUM_TEST_DATA = 1000000
+
+  private[this] def runBitShuffleBenchmark[T](
+      name: String,
+      iters: Int,
+      count: Int,
+      bitShuffleFunc: Option[(String, Array[T] => Unit)],
+      input: Array[T],
+      inputSize: Int): Unit = {
+    val benchmark = new Benchmark(name, iters * count)
+
+    bitShuffleFunc.map { case (label, func) =>
+      benchmark.addCase(s"${label}")({ i: Int =>
+        for (n <- 0L until iters) {
+          func(input)
+        }
+      })
+    }
+
+    benchmark.run()
+  }
 
   private[this] def computeRatio(compressed: Array[Byte], origSize: Int) = {
     s"${((compressed.length + 0.0) / origSize).formatted("%.3f")}"
@@ -72,6 +92,17 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
     }
 
     benchmark.run()
+  }
+
+  test("bitshuffle-benchmark") {
+    runBitShuffleBenchmark[Int](
+      "BitShuffle",
+      16,
+      NUM_TEST_DATA,
+      Some(("bitshuffle", (in: Array[Int]) =>
+        BitShuffle.bitUnShuffleIntArray(BitShuffle.bitShuffle(in)))),
+      Array.fill(NUM_TEST_DATA)(0),
+      4 * NUM_TEST_DATA)
   }
 
   test("snappy-benchmark (4-byte integers)") {
