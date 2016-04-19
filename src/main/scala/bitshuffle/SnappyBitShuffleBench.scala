@@ -15,20 +15,18 @@
  * limitations under the License.
  */
 
-package test
+package bitshuffle
 
 import org.apache.commons.math3.distribution.LogNormalDistribution
 import org.apache.spark.util.Benchmark
 import org.scalatest.FunSuite
 import org.xerial.snappy.{BitShuffle, Snappy}
-import org.apache.parquet.column.Encoding._
 import org.apache.parquet.column.values.delta._
-import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter._
 
-class SnappyBitShuffleBenchSuite extends FunSuite {
+final class SnappyBitShuffleBench extends FunSuite {
 
-  private[this] val NUM_TEST_DATA = 2500000
-  private[this] val NUM_TEST_COUNT = 16
+  private[this] val NUM_TEST_DATA = 10000000 // 40MB
+  private[this] val NUM_TEST_COUNT = 64
 
   private[this] def runBitShuffleBenchmark[T](
       name: String,
@@ -95,7 +93,8 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
     benchmark.run()
   }
 
-  test("bitshuffle-benchmark") {
+  def main(args: Array[String]) = {
+    // bitshuffle-benchmark
     runBitShuffleBenchmark[Int](
       "BitShuffle",
       NUM_TEST_COUNT,
@@ -104,9 +103,8 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
         BitShuffle.bitUnShuffleIntArray(BitShuffle.bitShuffle(in)))),
       Array.fill(NUM_TEST_DATA)(0),
       4 * NUM_TEST_DATA)
-  }
 
-  test("snappy-benchmark (4-byte integers)") {
+    // snappy-benchmark (4-byte integers)
     val lowerSkewTestData = {
       val rng = new LogNormalDistribution(0.0, 0.01)
       Array.fill(NUM_TEST_DATA)(rng.sample().toInt)
@@ -205,89 +203,6 @@ class SnappyBitShuffleBenchSuite extends FunSuite {
      * parquet encoder                            84 /  106        189.4           5.3       1.2X
      */
     runUncompressBenchmark[Int](
-      "Uncompress(Higher Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs2,
-      higherSkewTestData)
-  }
-
-  ignore("snappy-benchmark (4-byte floats)") {
-    val lowerSkewTestData = {
-      val rng = new LogNormalDistribution(0.0, 0.01)
-      Array.fill(NUM_TEST_DATA)(rng.sample().toFloat)
-    }
-
-    val higherSkewTestData = {
-      val rng = new LogNormalDistribution(0.0, 1.0)
-      Array.fill(NUM_TEST_DATA)(rng.sample().toFloat)
-    }
-
-    val compressFuncs1 = Seq[(String, Array[Float] => Array[Byte])](
-      ("vanilla snappy", (in: Array[Float]) => Snappy.compress(in)),
-      ("snappy + bitshuffle", (in: Array[Float]) => Snappy.compress(BitShuffle.bitShuffle(in))),
-      ("parquet encoder", (in: Array[Float]) => {
-        val writer = new PlainFloatDictionaryValuesWriter(1000, DELTA_BINARY_PACKED, PLAIN_DICTIONARY)
-        in.foreach { value =>
-          writer.writeFloat(value)
-        }
-        writer.getBytes().toByteArray()
-      })
-    )
-
-    /**
-     * Intel(R) Core(TM) i7-4578U CPU @ 3.00GHz
-     * Compress(Lower Skew):               Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
-     * -------------------------------------------------------------------------------------------
-     * vanilla snappy(1.000)                      37 /   40        429.6           2.3       1.0X
-     * snappy + bitshuffle(0.712)                 78 /  108        204.8           4.9       0.5X
-     * parquet encoder(0.594)                   4507 / 4651          3.6         281.7       0.0X
-     */
-    runCompressBenchmark[Float](
-      "Compress(Lower Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs1,
-      lowerSkewTestData, 4 * NUM_TEST_DATA)
-
-    /**
-     * Intel(R) Core(TM) i7-4578U CPU @ 3.00GHz
-     * Compress(Higher Skew):              Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
-     * -------------------------------------------------------------------------------------------
-     * vanilla snappy(1.000)                      32 /   36        502.6           2.0       1.0X
-     * snappy + bitshuffle(0.912)                 81 /   85        196.5           5.1       0.4X
-     * parquet encoder(0.625)                   8705 / 8912          1.8         544.1       0.0X
-     */
-    runCompressBenchmark(
-      "Compress(Higher Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs1,
-      higherSkewTestData, 4 * NUM_TEST_DATA)
-
-    val compressFuncs2 = Seq[(String, Array[Float] => Array[Byte], Array[Byte] => Unit)](
-      (
-        "vanilla snappy",
-        (in: Array[Float]) => Snappy.compress(in),
-        (in: Array[Byte]) => Snappy.uncompressFloatArray(in)
-      ),
-      (
-        "snappy + bitshuffle",
-        (in: Array[Float]) => Snappy.compress(BitShuffle.bitShuffle(in)),
-        (in: Array[Byte]) => BitShuffle.bitUnShuffleFloatArray(Snappy.uncompress(in))
-      )
-    )
-
-    /**
-     * Intel(R) Core(TM) i7-4578U CPU @ 3.00GHz
-     * Uncompress(Lower Skew):             Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
-     * -------------------------------------------------------------------------------------------
-     * vanilla snappy                             16 /   18       1003.8           1.0       1.0X
-     * snappy + bitshuffle                        47 /   51        338.1           3.0       0.3X
-     */
-    runUncompressBenchmark[Float](
-      "Uncompress(Lower Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs2,
-      lowerSkewTestData)
-
-    /**
-     * Intel(R) Core(TM) i7-4578U CPU @ 3.00GHz
-     * Uncompress(Higher Skew):            Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
-     * -------------------------------------------------------------------------------------------
-     * vanilla snappy                             14 /   19       1105.8           0.9       1.0X
-     * snappy + bitshuffle                        45 /   47        357.1           2.8       0.3X
-     */
-    runUncompressBenchmark[Float](
       "Uncompress(Higher Skew)", NUM_TEST_COUNT, NUM_TEST_DATA, compressFuncs2,
       higherSkewTestData)
   }
