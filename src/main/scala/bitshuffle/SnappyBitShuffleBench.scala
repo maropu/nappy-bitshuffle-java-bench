@@ -19,13 +19,12 @@ package bitshuffle
 
 import org.apache.commons.math3.distribution.LogNormalDistribution
 import org.apache.spark.util.Benchmark
-import org.scalatest.FunSuite
 import org.xerial.snappy.{BitShuffle, Snappy}
 import org.apache.parquet.column.values.delta._
 
-final class SnappyBitShuffleBench extends FunSuite {
+object SnappyBitShuffleBench {
 
-  private[this] val NUM_TEST_DATA = 10000000 // 40MB
+  private[this] val NUM_TEST_DATA = 1000000 // 40MB
   private[this] val NUM_TEST_COUNT = 64
 
   private[this] def runBitShuffleBenchmark[T](
